@@ -74,6 +74,8 @@ pub fn decode_selfie(encoded: &Vec<usize>, vocab: &HashMap<String, usize>) -> St
     decoded
 }
 
+// Dynamic programming approach to find optimal encoding
+// i.e. the encoding with the fewest tokens
 pub fn optimal_encode(
     selfie: &str,
     vocab: &HashMap<String, usize>,
@@ -81,14 +83,11 @@ pub fn optimal_encode(
     let token_indices: Vec<(usize, usize)> = split_selfie_opt(selfie);
     let mut encodings: Vec<Vec<usize>> = vec![vec![]; token_indices.len() + 1];
 
-    // Dynamic programming approach to find optimal encoding
-    // i.e. the encoding with the fewest tokens
     for i in 0..token_indices.len() {
         for j in 0..=i {
-            if !encodings[i + 1].is_empty() && (encodings[j].len() + 1) >= encodings[i + 1].len() {
+            if (encodings[j].len()+1) >= encodings[i + 1].len() && !encodings[i + 1].is_empty() {
                 continue;
             }
-
             let substring = &selfie[token_indices[j].0..token_indices[i].1];
 
             if let Some(value) = vocab.get(substring) {
