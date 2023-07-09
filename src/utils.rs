@@ -1,13 +1,14 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     fs::File,
     io::{BufRead, BufReader},
 };
 
+use counter::Counter;
 use dashmap::DashSet;
 use rayon::prelude::*;
 
-use crate::encoding::{split_selfie, split_selfie_indices_n};
+use crate::{encoding::split_selfie_indices_n, vocab::Vocab};
 
 // read file into vector of lines
 pub fn read_file(filename: &str) -> Vec<String> {
@@ -20,24 +21,7 @@ pub fn read_file(filename: &str) -> Vec<String> {
     lines
 }
 
-pub fn get_init_vocab(selfies: &[String]) -> HashMap<&str, usize> {
-    let tokens = DashSet::new();
-    selfies.par_iter().for_each(|selfie| {
-        let tokens_set = split_selfie(selfie).iter().copied().collect::<HashSet<&str>>();
-        for token in tokens_set {
-            tokens.insert(token);
-        }
-    });
-
-    let mut vocab = HashMap::new();
-    for (i, token) in tokens.iter().enumerate() {
-        vocab.insert(*token, i);
-    }
-
-    vocab
-}
-
-pub fn generate_subsets(selfies: &[String], n: usize) -> DashSet<&str> {
+pub fn generate_ngrams(selfies: &[String], n: usize) -> DashSet<&str> {
     let ngrams = DashSet::new();
 
     selfies.par_iter().for_each(|selfie| {
@@ -51,4 +35,16 @@ pub fn generate_subsets(selfies: &[String], n: usize) -> DashSet<&str> {
     });
 
     ngrams
+}
+
+pub fn count_token_occurance(encoded_selfies: &[Vec<usize>], vocab: &Vocab) -> Counter<usize> {
+    let mut token_counter: Counter<usize> = Counter::new();
+    vocab.values().iter().for_each(|v| {
+        token_counter.insert(*v, 0);
+    });
+    encoded_selfies.iter().for_each(|encoded_selfie| {
+        token_counter.update(encoded_selfie.to_vec());
+    });
+
+    token_counter
 }

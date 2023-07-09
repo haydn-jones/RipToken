@@ -1,8 +1,12 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
+
+use rayon::prelude::*;
+
+use crate::vocab::Vocab;
 
 // Dynamic programming approach to find optimal encoding
 // i.e. the encoding with the fewest tokens
-pub fn optimal_encode(selfie: &str, vocab: &HashMap<&str, usize>) -> Result<Vec<usize>, &'static str> {
+pub fn optimal_encode(selfie: &str, vocab: &Vocab) -> Result<Vec<usize>, &'static str> {
     let token_indices: Vec<(usize, usize)> = split_selfie_indices(selfie);
     let mut encodings: Vec<Vec<usize>> = vec![vec![]; token_indices.len() + 1];
 
@@ -23,80 +27,57 @@ pub fn optimal_encode(selfie: &str, vocab: &HashMap<&str, usize>) -> Result<Vec<
     encodings.last().cloned().ok_or("Cannot encode string with given vocab")
 }
 
-pub fn encode_selfie(selfie: &str, vocab: &HashMap<String, usize>) -> Vec<usize> {
-    let mut encoded = Vec::new();
-
-    for token in split_selfie(selfie) {
-        encoded.push(vocab[token]);
-    }
-
-    encoded
-}
-
-pub fn decode_selfie(encoded: &Vec<usize>, vocab: &HashMap<String, usize>) -> String {
-    // reverse vocab
-    let rev_vocab: HashMap<usize, String> = vocab.iter().map(|(k, v)| (*v, k.clone())).collect();
-    let mut decoded = String::new();
-
-    for token in encoded {
-        decoded.push_str(&rev_vocab[token]);
-    }
-    decoded
-}
-
 // This assumes the selfie is valid, please don't give poor little Rusty invalid selfies
 // he's just a little guy
 pub fn split_selfie(selfie: &str) -> Vec<&str> {
-    let mut tokens = Vec::new();
+    let mut tokens = Vec::with_capacity(4);
 
     let mut token_start = 0;
-    for (i, c) in selfie.char_indices() {
-        match c {
-            ']' => {
-                tokens.push(&selfie[token_start..i + 1]);
-                token_start = i + 1;
-            }
-            _ => continue,
+    selfie.char_indices().for_each(|(i, c)| {
+        if c == ']' {
+            tokens.push(&selfie[token_start..i + 1]);
+            token_start = i + 1;
         }
-    }
+    });
 
     tokens
 }
 
 pub fn split_selfie_indices(selfie: &str) -> Vec<(usize, usize)> {
-    let mut tokens = Vec::new();
+    let mut tokens = Vec::with_capacity(4);
 
     let mut token_start = 0;
-    for (i, c) in selfie.char_indices() {
-        match c {
-            ']' => {
-                tokens.push((token_start, i + 1));
-                token_start = i + 1;
-            }
-            _ => continue,
+    selfie.char_indices().for_each(|(i, c)| {
+        if c == ']' {
+            tokens.push((token_start, i + 1));
+            token_start = i + 1;
         }
-    }
+    });
 
     tokens
 }
 
 pub fn split_selfie_indices_n(selfie: &str, n: usize) -> Vec<(usize, usize)> {
-    let mut tokens = Vec::new();
-    let mut queue = VecDeque::new();
+    let mut tokens = Vec::with_capacity(4);
+    let mut queue = VecDeque::with_capacity(n);
 
     let mut token_start = 0;
-    for (i, c) in selfie.char_indices() {
-        match c {
-            ']' => {
-                queue.push_back(token_start);
-                if queue.len() == n {
-                    tokens.push((queue.pop_front().unwrap(), i + 1));
-                }
-                token_start = i + 1;
+    selfie.char_indices().for_each(|(i, c)| {
+        if c == ']' {
+            queue.push_back(token_start);
+            token_start = i + 1;
+            if queue.len() == n {
+                tokens.push((queue.pop_front().unwrap(), i + 1));
             }
-            _ => continue,
         }
-    }
+    });
 
     tokens
+}
+
+pub fn par_encode_dataset(selfies: &[String], vocab: &Vocab) -> Vec<Vec<usize>> {
+    selfies
+        .par_iter()
+        .map(|selfie| optimal_encode(selfie, vocab).unwrap())
+        .collect()
 }
