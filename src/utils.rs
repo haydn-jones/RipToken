@@ -21,16 +21,17 @@ pub fn read_file(filename: &str) -> Vec<String> {
 }
 
 pub fn get_init_vocab(selfies: &[String]) -> HashMap<&str, usize> {
-    // get set of unique tokens
-    let mut vocab = HashMap::new();
-    for selfie in selfies {
-        let tokens = split_selfie(selfie);
-        for token in tokens {
-            if !vocab.contains_key(token) {
-                let len = vocab.len();
-                vocab.insert(token, len);
-            }
+    let tokens = DashSet::new();
+    selfies.par_iter().for_each(|selfie| {
+        let tokens_set = split_selfie(selfie).iter().copied().collect::<HashSet<&str>>();
+        for token in tokens_set {
+            tokens.insert(token);
         }
+    });
+
+    let mut vocab = HashMap::new();
+    for (i, token) in tokens.iter().enumerate() {
+        vocab.insert(*token, i);
     }
 
     vocab
