@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 // Dynamic programming approach to find optimal encoding
 // i.e. the encoding with the fewest tokens
@@ -26,8 +26,7 @@ pub fn optimal_encode(selfie: &str, vocab: &HashMap<&str, usize>) -> Result<Vec<
 pub fn encode_selfie(selfie: &str, vocab: &HashMap<String, usize>) -> Vec<usize> {
     let mut encoded = Vec::new();
 
-    let tokens = split_selfie(selfie);
-    for token in tokens {
+    for token in split_selfie(selfie) {
         encoded.push(vocab[token]);
     }
 
@@ -83,16 +82,15 @@ pub fn split_selfie_indices(selfie: &str) -> Vec<(usize, usize)> {
 
 pub fn split_selfie_indices_n(selfie: &str, n: usize) -> Vec<(usize, usize)> {
     let mut tokens = Vec::new();
-    let mut queue = Vec::new();
+    let mut queue = VecDeque::new();
 
     let mut token_start = 0;
     for (i, c) in selfie.char_indices() {
         match c {
             ']' => {
-                queue.push(token_start);
+                queue.push_back(token_start);
                 if queue.len() == n {
-                    tokens.push((queue[0], i + 1));
-                    queue.remove(0);
+                    tokens.push((queue.pop_front().unwrap(), i + 1));
                 }
                 token_start = i + 1;
             }
