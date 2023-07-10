@@ -1,13 +1,14 @@
 pub mod encoding;
 pub mod utils;
 pub mod vocab;
+pub mod test_utils;
 
 use num_format::{Locale, ToFormattedString};
 
 use crate::{
     encoding::{par_encode_dataset, split_selfie},
-    utils::{count_token_occurance, generate_ngrams, read_file},
-    vocab::Vocab,
+    utils::{count_token_occurence, generate_ngrams, read_file},
+    vocab::Vocab
 };
 
 fn main() {
@@ -40,7 +41,7 @@ fn main() {
     println!("#######################################");
     println!("Counting tokens...");
 
-    let token_counter = count_token_occurance(&encoded_selfies, &vocab);
+    let token_counter = count_token_occurence(&encoded_selfies, &vocab);
 
     let topn = 10;
     let topk = token_counter.k_most_common_ordered(topn);
@@ -75,3 +76,7 @@ fn main() {
     let total = encoded_selfies.iter().map(|v| v.len()).sum::<usize>();
     println!("Tokens to encode dataset: {}", total.to_formatted_string(&Locale::en));
 }
+
+#[cfg(test)]
+mod utils_unit_tests;
+

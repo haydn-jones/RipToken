@@ -37,7 +37,7 @@ pub fn generate_ngrams(selfies: &[String], n: usize) -> DashSet<&str> {
     ngrams
 }
 
-pub fn count_token_occurance(encoded_selfies: &[Vec<usize>], vocab: &Vocab) -> Counter<usize> {
+pub fn count_token_occurence(encoded_selfies: &[Vec<usize>], vocab: &Vocab) -> Counter<usize> {
     let mut token_counter: Counter<usize> = Counter::new();
     vocab.values().iter().for_each(|v| {
         token_counter.insert(*v, 0);

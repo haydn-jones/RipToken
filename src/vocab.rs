@@ -71,6 +71,10 @@ impl Vocab {
     pub fn values(&self) -> Vec<usize> {
         self.vocab.values().copied().collect()
     }
+
+    pub fn keys(&self) -> Vec<&String> {
+        self.vocab.keys().collect()
+    }
 }
 
 impl Default for Vocab {
