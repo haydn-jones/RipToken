@@ -7,8 +7,10 @@ mod tests {
         vocab::Vocab,
         test_utils::{setup, cleanup},
     };
+    use serial_test::serial as serial;
 
     #[test]
+    #[serial]
     fn read_file_test() {
         // assert that file contents is read into a list of the lines
         setup();
@@ -18,6 +20,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn generate_ngrams_test() {
         setup();
         let f = read_file("./data/test_data.txt");
@@ -59,6 +62,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn count_token_occurence_test() {
         setup();
         let f = read_file("./data/test_data.txt");

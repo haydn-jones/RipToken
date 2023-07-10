@@ -10,6 +10,7 @@ rayon = "1.7.0"
 dashmap = "5.4.0"
 counter = "0.5.7"
 num-format = "0.4.4"
+serial_test = "2.0.0"
 
 [profile.release]
 lto = "fat"

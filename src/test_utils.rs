@@ -23,6 +23,5 @@ pub fn setup() {
 }
 
 pub fn cleanup() {
-    // TODO: For some reason this introduces failures?
-    // let _ = remove_test_data();
+    let _ = remove_test_data();
 }
