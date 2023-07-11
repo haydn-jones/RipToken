@@ -71,6 +71,33 @@ impl Vocab {
     pub fn values(&self) -> Vec<usize> {
         self.vocab.values().copied().collect()
     }
+
+    pub fn keys(&self) -> Vec<String> {
+        self.vocab.keys().cloned().collect()
+    }
+
+    pub fn remove(&mut self, token: &str) {
+        if let Some(token) = self.vocab.remove(token) {
+            self.rev_vocab.remove(&token);
+        } else {
+            panic!("Missing token: {}", token);
+        }
+    }
+
+    pub fn batch_remove(&mut self, tokens: &[String]) {
+        // remove tokens from vocab
+        for token in tokens.iter() {
+            self.remove(token);
+        }
+
+        // update indices
+        let keys = self.keys();
+        self.vocab.clear();
+        self.rev_vocab.clear();
+        for token in keys.iter() {
+            self.insert(token);
+        }
+    }
 }
 
 impl Default for Vocab {

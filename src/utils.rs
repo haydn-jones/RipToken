@@ -4,11 +4,10 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-use counter::Counter;
 use dashmap::DashSet;
 use rayon::prelude::*;
 
-use crate::{encoding::split_selfie_indices_n, vocab::Vocab};
+use crate::{counter::Counter, encoding::split_selfie_indices_n, vocab::Vocab};
 
 // read file into vector of lines
 pub fn read_file(filename: &str) -> Vec<String> {
@@ -37,13 +36,10 @@ pub fn generate_ngrams(selfies: &[String], n: usize) -> DashSet<&str> {
     ngrams
 }
 
-pub fn count_token_occurance(encoded_selfies: &[Vec<usize>], vocab: &Vocab) -> Counter<usize> {
-    let mut token_counter: Counter<usize> = Counter::new();
-    vocab.values().iter().for_each(|v| {
-        token_counter.insert(*v, 0);
-    });
+pub fn count_token_occurance(encoded_selfies: &[Vec<usize>], vocab: &Vocab) -> Counter {
+    let mut token_counter = Counter::zeroed(vocab.len());
     encoded_selfies.iter().for_each(|encoded_selfie| {
-        token_counter.update(encoded_selfie.to_vec());
+        token_counter.update(encoded_selfie);
     });
 
     token_counter
