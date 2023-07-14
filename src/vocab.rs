@@ -1,9 +1,11 @@
-use core::fmt;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use rand::seq::IteratorRandom;
+use dashmap::DashSet;
 
-use crate::{encoding::split_selfie};
+use rand::seq::SliceRandom;
+use rayon::prelude::*;
+
+use crate::encoding::split_selfie;
 
 pub struct Vocab {
     // base vocab
@@ -16,7 +18,7 @@ pub struct Vocab {
 }
 
 impl Vocab {
-    pub fn new(base_tokens: Vec<String>) -> Self {
+    pub fn new(selfies: &Vec<String>) -> Self {
         let mut vocab = Vocab {
             base_vocab: HashMap::new(),
             rev_base: HashMap::new(),
@@ -25,9 +27,22 @@ impl Vocab {
             rev_aux: HashMap::new(),
         };
 
-        // [C]: 0
-        // [F]: 1
-        for token in base_tokens {
+        let tokens: DashSet<String> = DashSet::new();
+        selfies.par_iter().for_each(|selfie| {
+            let unique = split_selfie(selfie)
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<HashSet<String>>();
+            unique.iter().for_each(|token| {
+                tokens.insert(token.to_string());
+            });
+        });
+
+        // Collect tokens into a vector
+        let mut tokens: Vec<String> = tokens.iter().map(|x| x.clone()).collect();
+        tokens.sort();
+
+        for token in tokens.iter() {
             let len = vocab.base_vocab.len();
             vocab.base_vocab.insert(token.clone(), len);
             vocab.rev_base.insert(len, token.clone());
@@ -37,7 +52,7 @@ impl Vocab {
     }
 
     pub fn insert_ngram(&mut self, tokens: &[usize]) {
-        let len = self.aux_vocab.len();
+        let len = self.aux_vocab.len() + self.base_vocab.len();
         if !self.aux_vocab.contains_key(tokens) {
             self.aux_vocab.insert(tokens.to_vec(), len);
             self.rev_aux.insert(len, tokens.to_vec());
@@ -77,13 +92,16 @@ impl Vocab {
     }
 
     fn take_aux(&self, length: usize) -> HashMap<Vec<usize>, usize> {
-        //here want to return a new Hashmap<Vec<usize>, usize> with n randomly selected entries from self.aux_vocab
-        let keys = self.aux_vocab.keys().choose_multiple(&mut rand::thread_rng(), length);
-        let mut to_return: HashMap<Vec<usize>, usize> = HashMap::new();
-        keys.iter().for_each(|x| {
-            to_return.insert((**x).clone(), *self.aux_vocab.get(x.clone()).unwrap());
-        });
-        to_return
+        let keystart = self.base_vocab.len();
+        let keyend = self.base_vocab.len() + self.aux_vocab.len();
+        let mut vec: Vec<usize> = (keystart..keyend).collect();
+        vec.shuffle(&mut rand::thread_rng());
+        vec.truncate(length);
+
+        HashMap::from_iter(vec.iter().map(|x| {
+            let key = self.rev_aux.get(x).unwrap();
+            (key.clone(), *x)
+        }))
     }
 
     fn reverse_aux(&self, to_reverse: HashMap<Vec<usize>, usize>) -> HashMap<usize, Vec<usize>> {
@@ -93,48 +111,18 @@ impl Vocab {
             to_return.insert(*to_reverse.get(x).unwrap(), (*x).clone());
         });
         to_return
-
     }
 
     pub fn spawn_child_vocab(&self, vocab_size: usize) -> Vocab {
-        //here, want to take the base vocab, and then VOCAB_SIZE - base_voc.len() aux vocab items randomly, to create a new vocab 
+        //here, want to take the base vocab, and then VOCAB_SIZE - base_voc.len() aux vocab items randomly, to create a new vocab
         let aux = self.take_aux(vocab_size - self.base_vocab.len());
         let aux_rev = self.reverse_aux(aux.clone());
-        let vocab = Vocab {
+
+        Vocab {
             base_vocab: self.base_vocab.clone(),
             rev_base: self.rev_base.clone(),
             aux_vocab: aux.clone(),
             rev_aux: aux_rev.clone(),
-        };
-        vocab
-    }
-
-}
-
-
-impl fmt::Display for Vocab {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let tokens = (0..10)
-            .map(|i| {
-                let token = self.rev_base.get(&i).unwrap();
-                format!("{}: {}", i, token)
-            })
-            .collect::<Vec<String>>();
-
-        let aux_tokens = (0..10)
-            .map_while(|i| {
-                if let Some(tokens) = self.rev_aux.get(&i) {
-                    let str_tokens = tokens
-                        .iter()
-                        .map(|token| (*self.rev_base.get(token).unwrap()).clone())
-                        .collect::<Vec<String>>();
-                    Some(format!("{}: {} | {:?} ", i, str_tokens.join(""), tokens))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<String>>();
-
-        write!(f, "Base:\n{}\nAux:\n{}", tokens.join("\n"), aux_tokens.join("\n"))
+        }
     }
 }

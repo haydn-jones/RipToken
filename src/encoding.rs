@@ -1,15 +1,15 @@
 use std::collections::VecDeque;
 
-use rayon::prelude::*;
-
 use crate::vocab::Vocab;
 
 // Dynamic programming approach to find optimal encoding
 // i.e. the encoding with the fewest tokens
-pub fn optimal_encode(selfie: &str, vocab: &Vocab) -> Result<Vec<usize>, &'static str> {
-    // let token_indices: Vec<(usize, usize)> = split_selfie_indices(selfie);
+pub fn optimal_encode(selfie: &str, vocab: &Vocab) -> Vec<usize> {
     let tokens = vocab.base_encode(selfie);
-    let mut encodings: Vec<Vec<usize>> = vec![vec![]; tokens.len() + 1];
+    let mut encodings: Vec<Vec<usize>> = vec![];
+    for i in 0..tokens.len() + 1 {
+        encodings.push(tokens[0..i].into());
+    }
 
     for i in 0..tokens.len() {
         for j in 0..=i {
@@ -25,7 +25,7 @@ pub fn optimal_encode(selfie: &str, vocab: &Vocab) -> Result<Vec<usize>, &'stati
         }
     }
 
-    encodings.last().cloned().ok_or("Cannot encode string with given vocab")
+    encodings.pop().unwrap()
 }
 
 // This assumes the selfie is valid, please don't give poor little Rusty invalid selfies

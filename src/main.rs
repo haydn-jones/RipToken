@@ -3,13 +3,11 @@ pub mod encoding;
 pub mod utils;
 pub mod vocab;
 
-use std::{collections::HashSet, fs::File};
-
 use num_format::{Locale, ToFormattedString};
 
 use crate::{
     counter::Counter,
-    encoding::{par_encode_dataset, split_selfie},
+    encoding::{optimal_encode, par_encode_dataset, split_selfie},
     utils::{count_token_occurence, read_file},
     vocab::Vocab,
 };
@@ -22,23 +20,11 @@ fn encode_and_count(selfies: &[String], vocab: &Vocab) -> (Counter, Vec<Vec<usiz
 }
 
 fn main() {
-    let mut selfies = read_file("./data/train_selfies.txt");
-    selfies.truncate(10000);
+    let selfies = read_file("./data/train_selfies.txt");
+    // selfies.truncate(10000);
     println!("Number of lines: {}", selfies.len().to_formatted_string(&Locale::en));
 
-    let mut tokens: HashSet<String> = HashSet::new();
-
-    selfies.iter().for_each(|selfie| {
-        let selfie_tokens = split_selfie(selfie);
-        // convert to string
-        let mut selfie_tokens = selfie_tokens
-            .iter()
-            .map(|token| token.to_string())
-            .collect::<Vec<String>>();
-        tokens.extend(selfie_tokens.drain(..));
-    });
-
-    let mut vocab = Vocab::new(tokens.into_iter().collect::<Vec<String>>());
+    let mut vocab = Vocab::new(&selfies);
 
     // get 2-grams
     let ngrams = utils::generate_ngrams(&selfies, 2);
@@ -54,9 +40,12 @@ fn main() {
         vocab.insert_ngram(&ngram_idxs);
     }
 
-    println!("Vocab:\n{}", vocab);
+    // Encode selfie 48
+    let to_enc = &selfies[48];
+    let encoded = optimal_encode(&to_enc, &vocab);
+    println!("Encoded: {:?}", encoded);
 
-    println!("Selfie: {}", &selfies[0]);
-    println!("Encoded: {:?}", encoding::optimal_encode(&selfies[0], &vocab));
-    println!("Encoded decoded: {}", vocab.decode(&encoding::optimal_encode(&selfies[0], &vocab).unwrap()));
+    let subsamp = vocab.spawn_child_vocab(128);
+    let encoded = optimal_encode(&to_enc, &subsamp);
+    println!("Encoded: {:?}", encoded);
 }
