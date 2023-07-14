@@ -1,34 +1,26 @@
-use std::collections::HashSet;
-
-use dashmap::DashSet;
+use ahash::HashSet;
 use rand::seq::SliceRandom;
 use rayon::prelude::*;
 
-use crate::encoding::split_selfie;
-
-type HashMap<K, V> = std::collections::HashMap<K, V, ahash::RandomState>;
+use crate::{
+    encoding::split_selfie,
+    types::{BiMap, DashSet},
+};
 
 pub struct Vocab {
     // base vocab
-    base_vocab: HashMap<String, u32>,
-    rev_base: HashMap<u32, String>,
-
-    // aux vocab
-    aux_vocab: HashMap<Vec<u32>, u32>,
-    rev_aux: HashMap<u32, Vec<u32>>,
+    base_vocab: BiMap<String, u32>,
+    aux_vocab: BiMap<Vec<u32>, u32>,
 }
 
 impl Vocab {
     pub fn new(selfies: &Vec<String>) -> Self {
         let mut vocab = Vocab {
-            base_vocab: HashMap::default(),
-            rev_base: HashMap::default(),
-
-            aux_vocab: HashMap::default(),
-            rev_aux: HashMap::default(),
+            base_vocab: BiMap::default(),
+            aux_vocab: BiMap::default(),
         };
 
-        let tokens: DashSet<String> = DashSet::new();
+        let tokens: DashSet<String> = DashSet::default();
         selfies.par_iter().for_each(|selfie| {
             let unique = split_selfie(selfie)
                 .iter()
@@ -46,7 +38,6 @@ impl Vocab {
         for token in tokens.iter() {
             let len = vocab.get_base_idx();
             vocab.base_vocab.insert(token.clone(), len);
-            vocab.rev_base.insert(len, token.clone());
         }
 
         vocab
@@ -54,14 +45,13 @@ impl Vocab {
 
     pub fn insert_ngram(&mut self, tokens: &[u32]) {
         let len = self.get_aux_idx();
-        if !self.aux_vocab.contains_key(tokens) {
+        if !self.aux_vocab.contains_left(tokens) {
             self.aux_vocab.insert(tokens.to_vec(), len);
-            self.rev_aux.insert(len, tokens.to_vec());
         }
     }
 
     pub fn get_base(&self, token: &str) -> Option<&u32> {
-        self.base_vocab.get(token)
+        self.base_vocab.get_by_left(token)
     }
 
     pub fn base_encode(&self, selfie: &str) -> Vec<u32> {
@@ -72,13 +62,13 @@ impl Vocab {
     }
 
     pub fn get_aux(&self, tokens: &[u32]) -> Option<&u32> {
-        self.aux_vocab.get(tokens)
+        self.aux_vocab.get_by_left(tokens)
     }
 
     pub fn decode(&self, encoded: &[u32]) -> String {
         let mut flattened = Vec::new();
         for token in encoded {
-            if let Some(tokens) = self.rev_aux.get(token) {
+            if let Some(tokens) = self.aux_vocab.get_by_right(token) {
                 flattened.extend(tokens);
             } else {
                 flattened.push(*token);
@@ -87,42 +77,28 @@ impl Vocab {
 
         flattened
             .iter()
-            .map(|token| (*self.rev_base.get(token).unwrap()).clone())
+            .map(|token| (*self.base_vocab.get_by_right(token).unwrap()).clone())
             .collect::<Vec<String>>()
             .join("")
     }
 
-    fn take_aux(&self, length: usize) -> HashMap<Vec<u32>, u32> {
-        let mut vec: Vec<u32> = (self.get_base_idx()..self.get_aux_idx()).collect();
-        vec.shuffle(&mut rand::thread_rng());
-        vec.truncate(length);
+    pub fn get_random_vocab(&self, vocab_size: usize) -> Vocab {
+        let aux_size = vocab_size - self.base_vocab.len();
+        let mut aux_idxs: Vec<u32> = (self.get_base_idx()..self.get_aux_idx()).collect();
+        aux_idxs.shuffle(&mut rand::thread_rng());
+        aux_idxs.truncate(aux_size);
 
-        HashMap::from_iter(vec.iter().map(|x| {
-            let key = self.rev_aux.get(x).unwrap();
-            (key.clone(), *x)
-        }))
-    }
-
-    fn reverse_aux(&self, to_reverse: HashMap<Vec<u32>, u32>) -> HashMap<u32, Vec<u32>> {
-        let keys = to_reverse.keys().clone();
-        let mut to_return: HashMap<u32, Vec<u32>> = HashMap::default();
-        keys.for_each(|x| {
-            to_return.insert(*to_reverse.get(x).unwrap(), (*x).clone());
-        });
-        to_return
-    }
-
-    pub fn spawn_child_vocab(&self, vocab_size: usize) -> Vocab {
-        //here, want to take the base vocab, and then VOCAB_SIZE - base_voc.len() aux vocab items randomly, to create a new vocab
-        let aux = self.take_aux(vocab_size - self.base_vocab.len());
-        let aux_rev = self.reverse_aux(aux.clone());
-
-        Vocab {
+        let mut new_voc = Vocab {
             base_vocab: self.base_vocab.clone(),
-            rev_base: self.rev_base.clone(),
-            aux_vocab: aux.clone(),
-            rev_aux: aux_rev.clone(),
+            aux_vocab: BiMap::default(),
+        };
+
+        for aux_idx in aux_idxs.iter() {
+            let aux = self.aux_vocab.get_by_right(aux_idx).unwrap().clone();
+            new_voc.insert_ngram(&aux);
         }
+
+        new_voc
     }
 
     fn get_aux_idx(&self) -> u32 {
@@ -131,5 +107,13 @@ impl Vocab {
 
     fn get_base_idx(&self) -> u32 {
         self.base_vocab.len().try_into().unwrap()
+    }
+
+    pub fn len(&self) -> usize {
+        self.base_vocab.len() + self.aux_vocab.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.base_vocab.is_empty() && self.aux_vocab.is_empty()
     }
 }

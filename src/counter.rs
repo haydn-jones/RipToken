@@ -13,11 +13,11 @@ impl Counter {
         Self { counts: vec![0; size] }
     }
 
-    pub fn insert(&mut self, key: usize) {
-        self.counts[key] += 1;
+    pub fn insert(&mut self, key: u32) {
+        self.counts[key as usize] += 1;
     }
 
-    pub fn update(&mut self, keys: &[usize]) {
+    pub fn update(&mut self, keys: &[u32]) {
         for key in keys.iter() {
             self.insert(*key);
         }
@@ -45,7 +45,7 @@ pub struct CounterIter<'a> {
 }
 
 impl<'a> IntoIterator for &'a Counter {
-    type Item = (usize, &'a usize);
+    type Item = (u32, &'a usize);
     type IntoIter = CounterIter<'a>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -57,11 +57,11 @@ impl<'a> IntoIterator for &'a Counter {
 }
 
 impl<'a> Iterator for CounterIter<'a> {
-    type Item = (usize, &'a usize);
+    type Item = (u32, &'a usize);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index < self.counter.counts.len() {
-            let result = (self.index, &self.counter.counts[self.index]);
+            let result = (self.index as u32, &self.counter.counts[self.index]);
             self.index += 1;
             Some(result)
         } else {
@@ -71,7 +71,7 @@ impl<'a> Iterator for CounterIter<'a> {
 }
 
 impl Counter {
-    pub fn most_common(&self, k: usize) -> Vec<(usize, usize)> {
+    pub fn most_common(&self, k: usize) -> Vec<(u32, usize)> {
         let mut heap = BinaryHeap::with_capacity(k);
 
         for (value, &count) in self.counts.iter().enumerate() {
@@ -85,7 +85,10 @@ impl Counter {
             }
         }
 
-        let mut ret: Vec<(usize, usize)> = heap.into_iter().map(|Reverse((count, value))| (value, count)).collect();
+        let mut ret: Vec<(u32, usize)> = heap
+            .into_iter()
+            .map(|Reverse((count, value))| (value as u32, count))
+            .collect();
         ret.sort_by(|a, b| b.1.cmp(&a.1));
         ret
     }

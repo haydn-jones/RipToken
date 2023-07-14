@@ -9,6 +9,7 @@ dashmap = "5.5.0"
 num-format = "0.4.4"
 rand = "0.8.5"
 ahash = "0.8.3"
+bimap = "0.6.3"
 
 [profile.release]
 lto = "fat"

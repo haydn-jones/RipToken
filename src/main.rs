@@ -1,5 +1,6 @@
 pub mod counter;
 pub mod encoding;
+pub mod types;
 pub mod utils;
 pub mod vocab;
 

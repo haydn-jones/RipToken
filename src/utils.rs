@@ -1,13 +1,16 @@
 use std::{
-    collections::HashSet,
     fs::File,
     io::{BufRead, BufReader},
 };
 
-use dashmap::DashSet;
+// use dashmap::DashSet;
 use rayon::prelude::*;
 
-use crate::{counter::Counter, vocab::Vocab};
+use crate::{
+    counter::Counter,
+    types::{DashSet, HashSet},
+    vocab::Vocab,
+};
 
 // read file into vector of lines
 pub fn read_file(filename: &str) -> Vec<String> {
@@ -21,7 +24,7 @@ pub fn read_file(filename: &str) -> Vec<String> {
 }
 
 pub fn generate_ngrams(selfies: &[Vec<u32>], n: usize) -> DashSet<Vec<u32>> {
-    let ngrams = DashSet::new();
+    let ngrams = DashSet::default();
 
     selfies.par_iter().for_each(|selfie| {
         let selfie_set = selfie
@@ -37,9 +40,8 @@ pub fn generate_ngrams(selfies: &[Vec<u32>], n: usize) -> DashSet<Vec<u32>> {
     ngrams
 }
 
-pub fn count_token_occurence(encoded_selfies: &[Vec<usize>], _vocab: &Vocab) -> Counter {
-    // let mut token_counter = Counter::zeroed(vocab.len());
-    let mut token_counter = Counter::zeroed(9);
+pub fn count_token_occurence(encoded_selfies: &[Vec<u32>], vocab: &Vocab) -> Counter {
+    let mut token_counter = Counter::zeroed(vocab.len());
     encoded_selfies.iter().for_each(|encoded_selfie| {
         token_counter.update(encoded_selfie);
     });

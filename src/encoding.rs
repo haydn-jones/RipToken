@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use rayon::prelude::*;
+
 use crate::vocab::Vocab;
 
 // Dynamic programming approach to find optimal encoding
@@ -72,11 +74,6 @@ pub fn split_selfie_indices_n(selfie: &str, n: usize) -> Vec<(usize, usize)> {
     tokens
 }
 
-pub fn par_encode_dataset(_selfies: &[String], _vocab: &Vocab) -> Vec<Vec<usize>> {
-    //selfies
-    //    .par_iter()
-    //    .map(|selfie| optimal_encode(selfie, vocab).unwrap())
-    //    .collect()
-
-    Vec::new()
+pub fn par_encode_dataset(selfies: &[Vec<u32>], vocab: &Vocab) -> Vec<Vec<u32>> {
+    selfies.par_iter().map(|selfie| optimal_encode(selfie, vocab)).collect()
 }
