@@ -7,19 +7,20 @@ use crate::vocab::Vocab;
 // Dynamic programming approach to find optimal encoding
 // i.e. the encoding with the fewest tokens
 pub fn optimal_encode(selfie: &str, vocab: &Vocab) -> Result<Vec<usize>, &'static str> {
-    let token_indices: Vec<(usize, usize)> = split_selfie_indices(selfie);
-    let mut encodings: Vec<Vec<usize>> = vec![vec![]; token_indices.len() + 1];
+    // let token_indices: Vec<(usize, usize)> = split_selfie_indices(selfie);
+    let tokens = vocab.base_encode(selfie);
+    let mut encodings: Vec<Vec<usize>> = vec![vec![]; tokens.len() + 1];
 
-    for i in 0..token_indices.len() {
+    for i in 0..tokens.len() {
         for j in 0..=i {
             if (encodings[j].len() + 1) >= encodings[i + 1].len() && !encodings[i + 1].is_empty() {
                 continue;
             }
-            let substring = &selfie[token_indices[j].0..token_indices[i].1];
+            let substring = &tokens[j..=i];
 
-            if let Some(value) = vocab.get(substring) {
+            if let Some(value) = vocab.get_aux(substring) {
                 encodings[i + 1] = encodings[j].clone();
-                encodings[i + 1].push(*value);
+                encodings[i + 1].push(value);
             }
         }
     }
@@ -75,9 +76,11 @@ pub fn split_selfie_indices_n(selfie: &str, n: usize) -> Vec<(usize, usize)> {
     tokens
 }
 
-pub fn par_encode_dataset(selfies: &[String], vocab: &Vocab) -> Vec<Vec<usize>> {
-    selfies
-        .par_iter()
-        .map(|selfie| optimal_encode(selfie, vocab).unwrap())
-        .collect()
+pub fn par_encode_dataset(_selfies: &[String], _vocab: &Vocab) -> Vec<Vec<usize>> {
+    //selfies
+    //    .par_iter()
+    //    .map(|selfie| optimal_encode(selfie, vocab).unwrap())
+    //    .collect()
+
+    Vec::new()
 }

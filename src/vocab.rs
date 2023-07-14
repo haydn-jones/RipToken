@@ -1,107 +1,103 @@
-use std::collections::{HashMap, HashSet};
-
-use dashmap::DashSet;
-use rayon::prelude::*;
+use core::fmt;
+use std::collections::HashMap;
 
 use crate::encoding::split_selfie;
 
 pub struct Vocab {
-    vocab: HashMap<String, usize>,
-    rev_vocab: HashMap<usize, String>,
+    // base vocab
+    base_vocab: HashMap<String, usize>,
+    rev_base: HashMap<usize, String>,
+
+    // aux vocab
+    aux_vocab: HashMap<Vec<usize>, usize>,
+    rev_aux: HashMap<usize, Vec<usize>>,
 }
 
 impl Vocab {
-    pub fn new() -> Self {
-        Vocab {
-            vocab: HashMap::new(),
-            rev_vocab: HashMap::new(),
-        }
-    }
+    pub fn new(base_tokens: Vec<String>) -> Self {
+        let mut vocab = Vocab {
+            base_vocab: HashMap::new(),
+            rev_base: HashMap::new(),
 
-    pub fn from_data(selfies: &[String]) -> Self {
-        let mut vocab = Vocab::new();
+            aux_vocab: HashMap::new(),
+            rev_aux: HashMap::new(),
+        };
 
-        let tokens = DashSet::new();
-        selfies.par_iter().for_each(|selfie| {
-            let tokens_set = split_selfie(selfie).iter().copied().collect::<HashSet<&str>>();
-            for token in tokens_set {
-                tokens.insert(token);
-            }
-        });
-
-        for token in tokens {
-            vocab.insert(token);
+        // [C]: 0
+        // [F]: 1
+        for token in base_tokens {
+            let len = vocab.base_vocab.len();
+            vocab.base_vocab.insert(token.clone(), len);
+            vocab.rev_base.insert(len, token.clone());
         }
 
         vocab
     }
 
-    pub fn insert(&mut self, token: &str) {
-        let len = self.vocab.len();
-        if !self.contains(token) {
-            self.vocab.insert(token.to_string(), len);
-            self.rev_vocab.insert(len, token.to_string());
+    pub fn insert_ngram(&mut self, tokens: &[usize]) {
+        let len = self.aux_vocab.len();
+        if !self.aux_vocab.contains_key(tokens) {
+            self.aux_vocab.insert(tokens.to_vec(), len);
+            self.rev_aux.insert(len, tokens.to_vec());
         }
     }
 
-    pub fn get(&self, token: &str) -> Option<&usize> {
-        self.vocab.get(token)
+    pub fn get_base(&self, token: &str) -> Option<usize> {
+        self.base_vocab.get(token).copied()
     }
 
-    pub fn get_rev(&self, token: &usize) -> Option<&String> {
-        self.rev_vocab.get(token)
+    pub fn base_encode(&self, selfie: &str) -> Vec<usize> {
+        split_selfie(selfie)
+            .iter()
+            .map(|token| self.get_base(token).unwrap())
+            .collect::<Vec<usize>>()
     }
 
-    pub fn len(&self) -> usize {
-        self.vocab.len()
+    pub fn get_aux(&self, tokens: &[usize]) -> Option<usize> {
+        self.aux_vocab.get(tokens).copied()
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.vocab.is_empty()
-    }
-
-    pub fn contains(&self, token: &str) -> bool {
-        self.vocab.contains_key(token)
-    }
-
-    pub fn contains_rev(&self, token: &usize) -> bool {
-        self.rev_vocab.contains_key(token)
-    }
-
-    pub fn values(&self) -> Vec<usize> {
-        self.vocab.values().copied().collect()
-    }
-
-    pub fn keys(&self) -> Vec<String> {
-        self.vocab.keys().cloned().collect()
-    }
-
-    pub fn remove(&mut self, token: &str) {
-        if let Some(token) = self.vocab.remove(token) {
-            self.rev_vocab.remove(&token);
-        } else {
-            panic!("Missing token: {}", token);
-        }
-    }
-
-    pub fn batch_remove(&mut self, tokens: &[String]) {
-        // remove tokens from vocab
-        for token in tokens.iter() {
-            self.remove(token);
+    pub fn decode(&self, encoded: &[usize]) -> String {
+        let mut flattened = Vec::new();
+        for token in encoded {
+            if let Some(tokens) = self.rev_aux.get(token) {
+                flattened.extend(tokens);
+            } else {
+                flattened.push(*token);
+            }
         }
 
-        // update indices
-        let keys = self.keys();
-        self.vocab.clear();
-        self.rev_vocab.clear();
-        for token in keys.iter() {
-            self.insert(token);
-        }
+        flattened
+            .iter()
+            .map(|token| (*self.rev_base.get(token).unwrap()).clone())
+            .collect::<Vec<String>>()
+            .join("")
     }
 }
 
-impl Default for Vocab {
-    fn default() -> Self {
-        Self::new()
+impl fmt::Display for Vocab {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let tokens = (0..10)
+            .map(|i| {
+                let token = self.rev_base.get(&i).unwrap();
+                format!("{}: {}", i, token)
+            })
+            .collect::<Vec<String>>();
+
+        let aux_tokens = (0..10)
+            .map_while(|i| {
+                if let Some(tokens) = self.rev_aux.get(&i) {
+                    let str_tokens = tokens
+                        .iter()
+                        .map(|token| (*self.rev_base.get(token).unwrap()).clone())
+                        .collect::<Vec<String>>();
+                    Some(format!("{}: {} | {:?} ", i, str_tokens.join(""), tokens))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<String>>();
+
+        write!(f, "Base:\n{}\nAux:\n{}", tokens.join("\n"), aux_tokens.join("\n"))
     }
 }
