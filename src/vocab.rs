@@ -1,10 +1,12 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use dashmap::DashSet;
 use rand::seq::SliceRandom;
 use rayon::prelude::*;
 
 use crate::encoding::split_selfie;
+
+type HashMap<K, V> = std::collections::HashMap<K, V, ahash::RandomState>;
 
 pub struct Vocab {
     // base vocab
@@ -19,11 +21,11 @@ pub struct Vocab {
 impl Vocab {
     pub fn new(selfies: &Vec<String>) -> Self {
         let mut vocab = Vocab {
-            base_vocab: HashMap::new(),
-            rev_base: HashMap::new(),
+            base_vocab: HashMap::default(),
+            rev_base: HashMap::default(),
 
-            aux_vocab: HashMap::new(),
-            rev_aux: HashMap::new(),
+            aux_vocab: HashMap::default(),
+            rev_aux: HashMap::default(),
         };
 
         let tokens: DashSet<String> = DashSet::new();
@@ -103,7 +105,7 @@ impl Vocab {
 
     fn reverse_aux(&self, to_reverse: HashMap<Vec<u32>, u32>) -> HashMap<u32, Vec<u32>> {
         let keys = to_reverse.keys().clone();
-        let mut to_return: HashMap<u32, Vec<u32>> = HashMap::new();
+        let mut to_return: HashMap<u32, Vec<u32>> = HashMap::default();
         keys.for_each(|x| {
             to_return.insert(*to_reverse.get(x).unwrap(), (*x).clone());
         });

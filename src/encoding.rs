@@ -8,18 +8,20 @@ pub fn optimal_encode(tokens: &[u32], vocab: &Vocab) -> Vec<u32> {
     let mut encodings: Vec<Vec<u32>> = (0..tokens.len() + 1).map(|i| tokens[0..i].to_vec()).collect();
 
     for i in 0..tokens.len() {
-        for j in 0..i {
-            if (encodings[j].len() + 1) >= encodings[i + 1].len() {
+        for j in 0..=i {
+            if !encodings[i + 1].is_empty() && (encodings[j].len() + 1) >= encodings[i + 1].len() {
                 continue;
             }
-            if let Some(value) = vocab.get_aux(&tokens[j..=i]) {
+
+            let slice = &tokens[j..=i];
+            if let Some(value) = vocab.get_aux(slice) {
                 encodings[i + 1] = encodings[j].clone();
                 encodings[i + 1].push(*value);
             }
         }
     }
 
-    encodings.pop().unwrap()
+    encodings[tokens.len()].clone()
 }
 
 // This assumes the selfie is valid, please don't give poor little Rusty invalid selfies
