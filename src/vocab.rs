@@ -1,7 +1,9 @@
 use core::fmt;
 use std::collections::HashMap;
 
-use crate::encoding::split_selfie;
+use rand::seq::IteratorRandom;
+
+use crate::{encoding::split_selfie};
 
 pub struct Vocab {
     // base vocab
@@ -73,7 +75,42 @@ impl Vocab {
             .collect::<Vec<String>>()
             .join("")
     }
+
+    fn take_aux(&self, length: usize) -> HashMap<Vec<usize>, usize> {
+        //here want to return a new Hashmap<Vec<usize>, usize> with n randomly selected entries from self.aux_vocab
+        let keys = self.aux_vocab.keys().choose_multiple(&mut rand::thread_rng(), length);
+        let mut to_return: HashMap<Vec<usize>, usize> = HashMap::new();
+        keys.iter().for_each(|x| {
+            to_return.insert((**x).clone(), *self.aux_vocab.get(x.clone()).unwrap());
+        });
+        to_return
+    }
+
+    fn reverse_aux(&self, to_reverse: HashMap<Vec<usize>, usize>) -> HashMap<usize, Vec<usize>> {
+        let keys = to_reverse.keys().clone();
+        let mut to_return: HashMap<usize, Vec<usize>> = HashMap::new();
+        keys.for_each(|x| {
+            to_return.insert(*to_reverse.get(x).unwrap(), (*x).clone());
+        });
+        to_return
+
+    }
+
+    pub fn spawn_child_vocab(&self, vocab_size: usize) -> Vocab {
+        //here, want to take the base vocab, and then VOCAB_SIZE - base_voc.len() aux vocab items randomly, to create a new vocab 
+        let aux = self.take_aux(vocab_size - self.base_vocab.len());
+        let aux_rev = self.reverse_aux(aux.clone());
+        let vocab = Vocab {
+            base_vocab: self.base_vocab.clone(),
+            rev_base: self.rev_base.clone(),
+            aux_vocab: aux.clone(),
+            rev_aux: aux_rev.clone(),
+        };
+        vocab
+    }
+
 }
+
 
 impl fmt::Display for Vocab {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
