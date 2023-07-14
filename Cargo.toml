@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 rayon = "1.7.0"
-dashmap = "5.4.0"
+dashmap = "5.5.0"
 num-format = "0.4.4"
-rand = "0.8.4"
+rand = "0.8.5"
 
 [profile.release]
 lto = "fat"

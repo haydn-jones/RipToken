@@ -7,7 +7,7 @@ use std::{
 use dashmap::DashSet;
 use rayon::prelude::*;
 
-use crate::{counter::Counter, encoding::split_selfie_indices_n, vocab::Vocab};
+use crate::{counter::Counter, vocab::Vocab};
 
 // read file into vector of lines
 pub fn read_file(filename: &str) -> Vec<String> {
@@ -20,16 +20,17 @@ pub fn read_file(filename: &str) -> Vec<String> {
     lines
 }
 
-pub fn generate_ngrams(selfies: &[String], n: usize) -> DashSet<&str> {
+pub fn generate_ngrams(selfies: &[Vec<u32>], n: usize) -> DashSet<Vec<u32>> {
     let ngrams = DashSet::new();
 
     selfies.par_iter().for_each(|selfie| {
-        let selfie_set = split_selfie_indices_n(selfie, n)
-            .iter()
-            .map(|w| &selfie[w.0..w.1])
-            .collect::<HashSet<&str>>();
-        for ngram in selfie_set {
-            ngrams.insert(ngram);
+        let selfie_set = selfie
+            .windows(n)
+            .map(|ngram| ngram.to_vec())
+            .collect::<HashSet<Vec<_>>>();
+
+        for ngram in selfie_set.iter() {
+            ngrams.insert(ngram.clone());
         }
     });
 

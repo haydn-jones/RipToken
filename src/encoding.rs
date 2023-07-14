@@ -4,23 +4,17 @@ use crate::vocab::Vocab;
 
 // Dynamic programming approach to find optimal encoding
 // i.e. the encoding with the fewest tokens
-pub fn optimal_encode(selfie: &str, vocab: &Vocab) -> Vec<usize> {
-    let tokens = vocab.base_encode(selfie);
-    let mut encodings: Vec<Vec<usize>> = vec![];
-    for i in 0..tokens.len() + 1 {
-        encodings.push(tokens[0..i].into());
-    }
+pub fn optimal_encode(tokens: &[u32], vocab: &Vocab) -> Vec<u32> {
+    let mut encodings: Vec<Vec<u32>> = (0..tokens.len() + 1).map(|i| tokens[0..i].to_vec()).collect();
 
     for i in 0..tokens.len() {
-        for j in 0..=i {
-            if (encodings[j].len() + 1) >= encodings[i + 1].len() && !encodings[i + 1].is_empty() {
+        for j in 0..i {
+            if (encodings[j].len() + 1) >= encodings[i + 1].len() {
                 continue;
             }
-            let substring = &tokens[j..=i];
-
-            if let Some(value) = vocab.get_aux(substring) {
+            if let Some(value) = vocab.get_aux(&tokens[j..=i]) {
                 encodings[i + 1] = encodings[j].clone();
-                encodings[i + 1].push(value);
+                encodings[i + 1].push(*value);
             }
         }
     }
