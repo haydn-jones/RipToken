@@ -9,7 +9,11 @@ dashmap = "5.5.0"
 num-format = "0.4.4"
 rand = "0.8.5"
 ahash = "0.8.3"
-bimap = "0.6.3"
+bimap = { version = "0.6.3", features = ["serde"] }
+serde = { version = "1.0.171", features = ["derive"] }
+ron = "0.8.0"
+counter = "0.5.7"
+kdam = "0.3.0"
 
 [profile.release]
 lto = "fat"

@@ -3,12 +3,12 @@ use std::{
     io::{BufRead, BufReader},
 };
 
+use counter::Counter;
 // use dashmap::DashSet;
 use rayon::prelude::*;
 
 use crate::{
-    counter::Counter,
-    types::{DashSet, HashSet},
+    types::{DashSet, HashSet, Selfie, DashMap},
     vocab::Vocab,
 };
 
@@ -23,8 +23,11 @@ pub fn read_file(filename: &str) -> Vec<String> {
     lines
 }
 
-pub fn generate_ngrams(selfies: &[Vec<u32>], n: usize) -> DashSet<Vec<u32>> {
+pub fn generate_ngrams(selfies: &[Selfie], n: usize) -> DashSet<Selfie> {
+    // This function only generates ngrams that occur more than 'n' times
+
     let ngrams = DashSet::default();
+    let ngram_counts: DashMap<Selfie, usize> = DashMap::default();
 
     selfies.par_iter().for_each(|selfie| {
         let selfie_set = selfie
@@ -33,18 +36,29 @@ pub fn generate_ngrams(selfies: &[Vec<u32>], n: usize) -> DashSet<Vec<u32>> {
             .collect::<HashSet<Vec<_>>>();
 
         for ngram in selfie_set.iter() {
-            ngrams.insert(ngram.clone());
+            ngram_counts.entry(ngram.clone()).and_modify(|count| *count += 1).or_insert(1);
+            if ngram_counts.get(ngram).unwrap().value() > &n {
+                ngrams.insert(ngram.clone());
+            }
         }
     });
 
     ngrams
 }
 
-pub fn count_token_occurence(encoded_selfies: &[Vec<u32>], vocab: &Vocab) -> Counter {
-    let mut token_counter = Counter::zeroed(vocab.len());
-    encoded_selfies.iter().for_each(|encoded_selfie| {
-        token_counter.update(encoded_selfie);
-    });
+pub fn count_token_occurence(encoded_selfies: &[Selfie], vocab: &Vocab) -> Counter<u32> {
+    let mut token_counter = Counter::default();
+    for token in vocab.aux_vals() {
+        token_counter.insert(token, 0);
+    }
+
+    for selfie in encoded_selfies.iter() {
+        for token in selfie.iter() {
+            if vocab.is_aux(token) {
+                token_counter[token] += 1;
+            }
+        }
+    }
 
     token_counter
 }

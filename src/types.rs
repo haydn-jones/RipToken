@@ -4,3 +4,6 @@ pub type DashSet<K> = dashmap::DashSet<K, ahash::RandomState>;
 pub type DashMap<K, V> = dashmap::DashMap<K, V, ahash::RandomState>;
 
 pub type BiMap<L, R> = bimap::BiHashMap<L, R, ahash::RandomState, ahash::RandomState>;
+
+pub type Token = u32;
+pub type Selfie = Vec<Token>;
